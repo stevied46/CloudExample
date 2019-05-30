@@ -1,0 +1,26 @@
+{
+  "name": "cloudexample",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stevied46/CloudExample.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/stevied46/CloudExample/issues"
+  },
+  "homepage": "https://github.com/stevied46/CloudExample#readme",
+  "dependencies": {
+    "http": "0.0.0"
+  },
+  "devDependencies": {
+    "pack-zip": "^0.2.2"
+  }
+}
