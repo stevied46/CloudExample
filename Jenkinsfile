@@ -22,7 +22,7 @@ pipeline {
     }
      stage('Build') {
          steps {
-          sh 'aws cloudformation create-stack --template-url https://stevenmcbucket.s3-us-east-1.amazonaws.com/cloudformation.template --stack-name steventeststack --capabilities CAPABILITY_IAM --region us-east-1\n'
+          sh 'aws cloudformation create-stack --template-url https://stevenmcbucket.s3.amazonaws.com/cloudformation.template --stack-name steventeststack --capabilities CAPABILITY_IAM --region us-east-1\n'
           sh 'aws cloudformation wait stack-create-complete --stack-name steventeststack --region us-east-1'
          }
      }
