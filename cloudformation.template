@@ -1,0 +1,151 @@
+{
+   "AWSTemplateFormatVersion": "2010-09-09",
+   "Description": "AWS CloudFormation Template. This template installs a highly-available, scalable TestMaker deployment using a multi-az Amazon RDS database instance for storage. ONLY THE EU-WEST-1 AMI ID IS CORRECT!!",
+   "Parameters": {
+      "KeyName": {
+         "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instances",
+         "Type": "String",
+         "Default": "StevenKeyPair"
+      },
+      "InstanceType": {
+         "Description": "WebServer EC2 instance type",
+         "Type": "String",
+         "Default": "t2.nano",
+         "AllowedValues": ["t2.nano", "t2.micro", "t2.medium", "t2.large", "m4.large", "m4.xlarge", "m4.2xlarge", "m4.4xlarge"],
+         "ConstraintDescription": "must be a valid EC2 instance type."
+      },
+      "WebServerCapacity": {
+         "Default": "1",
+         "Description": "The initial number of WebServer instances",
+         "Type": "Number",
+         "MinValue": "1",
+         "MaxValue": "5",
+         "ConstraintDescription": "must be between 1 and 5 EC2 instances."
+      },
+      "SSHLocation": {
+         "Description": " The IP address range that can be used to SSH to the EC2 instances",
+         "Type": "String",
+         "MinLength": "9",
+         "MaxLength": "18",
+         "Default": "0.0.0.0/0",
+         "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+         "ConstraintDescription": "must be a valid IP CIDR range of the form x.x.x.x/x."
+      }
+   },
+   "Resources": {
+      "ElasticLoadBalancer": {
+         "Type": "AWS::ElasticLoadBalancing::LoadBalancer",
+         "Metadata": {
+            "Comment1": "Configure the Load Balancer with a simple health check and cookie-based stickiness",
+            "Comment2": "Use install path for healthcheck to avoid redirects - ELB healthcheck does not handle 302 return codes"
+         },
+         "Properties": {
+            "AvailabilityZones": {
+               "Fn::GetAZs": ""
+            },
+            "Listeners": [{
+               "LoadBalancerPort": "80",
+               "InstancePort": "8081",
+               "Protocol": "HTTP"
+            }],
+            "HealthCheck": {
+               "Target": "HTTP:8081/",
+               "HealthyThreshold": "2",
+               "UnhealthyThreshold": "5",
+               "Interval": "10",
+               "Timeout": "5"
+            }
+         }
+      },
+      "WebServerGroup": {
+         "Type": "AWS::AutoScaling::AutoScalingGroup",
+         "Properties": {
+            "AvailabilityZones": {
+               "Fn::GetAZs": ""
+            },
+            "LaunchConfigurationName": {
+               "Ref": "LaunchConfig"
+            },
+            "MinSize": "1",
+            "MaxSize": "5",
+            "DesiredCapacity": {
+               "Ref": "WebServerCapacity"
+            },
+            "LoadBalancerNames": [{
+               "Ref": "ElasticLoadBalancer"
+            }]
+         }
+      },
+      "LaunchConfig": {
+         "Type": "AWS::AutoScaling::LaunchConfiguration",
+         "Properties": {
+            "ImageId": "ami-01fb8e7fdf4174d8c",
+            "InstanceType": {
+               "Ref": "InstanceType"
+            },
+            "SecurityGroups": [{
+               "Ref": "WebServerSecurityGroup"
+            }],
+            "KeyName": {
+               "Ref": "KeyName"
+            },
+            "UserData": {
+               "Fn::Base64": {
+                  "Fn::Join": ["", [
+                     "#!/bin/bash\n",
+                     "yum update -y\n",
+                     "curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.32.0/install.sh | bash\n",
+                     ". ~/.nvm/nvm.sh\n",
+                     "nvm install 10\n",
+                     "cd /home/ec2-user\n",
+                     "curl https://stevenmcbucket.s3-ap-northeast-1.amazonaws.com/amazonexample.zip\n",
+                     "gunzip -S .zip amazonexample.zip\n",
+                     "cd package\n",
+                     "nohup node server.js\n"
+                  ]]
+               }
+            }
+         }
+      },
+      "WebServerSecurityGroup": {
+         "Type": "AWS::EC2::SecurityGroup",
+         "Properties": {
+            "GroupDescription": "Enable HTTP access via port 8081 locked down to the load balancer + SSH access",
+            "SecurityGroupIngress": [{
+                  "IpProtocol": "tcp",
+                  "FromPort": "80",
+                  "ToPort": "8081",
+                  "SourceSecurityGroupOwnerId": {
+                     "Fn::GetAtt": ["ElasticLoadBalancer", "SourceSecurityGroup.OwnerAlias"]
+                  },
+                  "SourceSecurityGroupName": {
+                     "Fn::GetAtt": ["ElasticLoadBalancer", "SourceSecurityGroup.GroupName"]
+                  }
+               },
+               {
+                  "IpProtocol": "tcp",
+                  "FromPort": "22",
+                  "ToPort": "22",
+                  "CidrIp": {
+                     "Ref": "SSHLocation"
+                  }
+               }
+
+            ]
+
+         }
+
+      }
+
+   },
+   "Outputs": {
+      "WebsiteURL": {
+         "Value": {
+            "Fn::Join": ["", ["http://", {
+               "Fn::GetAtt": ["ElasticLoadBalancer", "DNSName"]
+            }]]
+         },
+         "Description": "Example"
+      }
+   }
+}
