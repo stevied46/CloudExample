@@ -16,7 +16,7 @@ pipeline {
         steps {
          sh  "npm run build-aws-resource"
          sh "aws s3 ls"
-         sh "aws s3 cp CloudExample.zip s3://stevenmcbucket/CloudExample.zip"
+         sh "aws s3 cp cloudexample.zip s3://stevenmcbucket/cloudexample.zip"
          sh "aws s3 cp cloudformation.template s3://stevenmcbucket/cloudformation.template"
         }
     }
